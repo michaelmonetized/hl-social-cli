@@ -39,6 +39,9 @@ if [ -z "$COMPANY" ]; then
       if [[ $arg == *"--company"* ]]; then
         COMPANY="${arg#*=}"
         break
+      else
+        echo "Company not set"
+        exit 1
       fi
     done
   fi
@@ -57,6 +60,9 @@ if [ -z "$URL" ]; then
       if [[ $arg == *"--url"* ]]; then
         URL="${arg#*=}"
         break
+      else
+        echo "URL not set"
+        exit 1
       fi
     done
   fi
@@ -75,6 +81,9 @@ if [ -z "$CAMPAIGN" ]; then
       if [[ $arg == *"--campaign"* ]]; then
         CAMPAIGN="${arg#*=}"
         break
+      else
+        echo "Campaign not set"
+        exit 1
       fi
     done
   fi
@@ -93,6 +102,9 @@ if [ -z "$GOAL" ]; then
       if [[ $arg == *"--goal"* ]]; then
         GOAL="${arg#*=}"
         break
+      else
+        echo "Goal not set"
+        exit 1
       fi
     done
   fi
@@ -111,6 +123,9 @@ if [ -z "$VIBE" ]; then
       if [[ $arg == *"--vibe"* ]]; then
         VIBE="${arg#*=}"
         break
+      else
+        echo "Vibe not set"
+        exit 1
       fi
     done
   fi
