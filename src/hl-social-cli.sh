@@ -14,121 +14,110 @@ if [ -z "$HUGGINGFACE_TOKEN" ]; then
   exit 1
 fi
 
-# variables
-# Variables are set on the command line or in the config file
-# --company
-# --url
-# --campaign
-# --goal
-# --vibe
-
-# Examaple hl-social-cli.sh --company="Hustle Launch" --url="https://www.hustlelaunch.com" --campaign="Launch a new product" --goal="Increase sales" --vibe="Funny"
-# Examaple hl-social-cli.sh --goal="Increase brand awareness" --company="Hustle Launch" --url="https://www.hustlelaunch.com" --campaign="Launch a new product" --vibe="Funny"
-
-# These could be set in any order
+# Parse command-line arguments
+for arg in "$@"; do
+  case $arg in
+  --company=*)
+    COMPANY="${arg#*=}"
+    shift
+    ;;
+  --description=*)
+    DESCRIPTION="${arg#*=}"
+    shift
+    ;;
+  --url=*)
+    URL="${arg#*=}"
+    shift
+    ;;
+  --campaign=*)
+    CAMPAIGN="${arg#*=}"
+    shift
+    ;;
+  --goal=*)
+    GOAL="${arg#*=}"
+    shift
+    ;;
+  --vibe=*)
+    VIBE="${arg#*=}"
+    shift
+    ;;
+  *)
+    # unknown option
+    ;;
+  esac
+done
 
 # Check if the variables are set
 if [ -z "$COMPANY" ]; then
-  # check if --company is set
-  if [ -z "$*" ]; then
-    echo "Please set the --company variable or pass it as an argument"
-    exit 1
-  else
-    # set the company variable to whichever arg in $@ has --company before it
-    for arg in "$@"; do
-      if [[ $arg == *"--company"* ]]; then
-        COMPANY="${arg#*=}"
-        break
-      else
-        echo "Company not set"
-        exit 1
-      fi
-    done
-  fi
+  read -rp "Company Name: " COMPANY
 fi
-
 echo "Company: $COMPANY"
 
-if [ -z "$URL" ]; then
-  # check if --url is set
-  if [ -z "$*" ]; then
-    echo "Please set the --url variable or pass it as an argument"
-    exit 1
-  else
-    # set the url variable to whichever arg in $@ has --url before it
-    for arg in "$@"; do
-      if [[ $arg == *"--url"* ]]; then
-        URL="${arg#*=}"
-        break
-      else
-        echo "URL not set"
-        exit 1
-      fi
-    done
-  fi
+if [ -z "$DESCRIPTION" ]; then
+  read -rp "Description Name: " DESCRIPTION
 fi
+echo "Company: $DESCRIPTION"
 
+if [ -z "$URL" ]; then
+  read -rp "URL: " URL
+fi
 echo "URL: $URL"
 
 if [ -z "$CAMPAIGN" ]; then
-  # check if --campaign is set
-  if [ -z "$*" ]; then
-    echo "Please set the --campaign variable or pass it as an argument"
-    exit 1
-  else
-    # set the campaign variable to whichever arg in $@ has --campaign before it
-    for arg in "$@"; do
-      if [[ $arg == *"--campaign"* ]]; then
-        CAMPAIGN="${arg#*=}"
-        break
-      else
-        echo "Campaign not set"
-        exit 1
-      fi
-    done
-  fi
+  read -rp "Campaign Name: " CAMPAIGN
 fi
-
 echo "Campaign: $CAMPAIGN"
 
 if [ -z "$GOAL" ]; then
-  # check if --goal is set
-  if [ -z "$*" ]; then
-    echo "Please set the --goal variable or pass it as an argument"
-    exit 1
-  else
-    # set the goal variable to whichever arg in $@ has --goal before it
-    for arg in "$@"; do
-      if [[ $arg == *"--goal"* ]]; then
-        GOAL="${arg#*=}"
-        break
-      else
-        echo "Goal not set"
-        exit 1
-      fi
-    done
-  fi
+  read -rp "Campaign Goal: " GOAL
 fi
-
 echo "Goal: $GOAL"
 
 if [ -z "$VIBE" ]; then
-  # check if --vibe is set
-  if [ -z "$*" ]; then
-    echo "Please set the --vibe variable or pass it as an argument"
-    exit 1
-  else
-    # set the vibe variable to whichever arg in $@ has --vibe before it
-    for arg in "$@"; do
-      if [[ $arg == *"--vibe"* ]]; then
-        VIBE="${arg#*=}"
-        break
-      else
-        echo "Vibe not set"
-        exit 1
-      fi
-    done
-  fi
+  read -rp "Vibe: " VIBE
 fi
-
 echo "Vibe: $VIBE"
+
+CAPTION_PROMPT="Generate a json array of no less and no more than 42 (FORTY-TWO) total completely different engaging social media post captions for [company name: $COMPANY]($URL) [company description: $DESCRIPTION] [campaign name: $CAMPAIGN] [campaign goal(s): $GOAL] with the vibe [vibe: $VIBE] use a json array output following the example structure [\n\t{\n\t\ttitle: string,\n\t\tcaption: string,\n\t\thashtags: string[]\n\t}\n]\n\n [[it is highly important that there is strict adhearance to the output structure and the resulting array of EXACTLY 42 objects containg all three properties is at the top level and not nested inside any objects]]. you must write a unique relevant engaging title, you must write a unique relevant engaging caption, you must write at least 5 unique engaging hashtags, do not deviate from the task, do not write less than 42 array items containing separate title, caption and hashtags properties, do not write more than 42 array items. do not halluciante. do not provide any information that could be considered misinformation, disinformation, or factually untrue."
+echo "Prompt: $CAPTION_PROMPT"
+
+# generate a random filename 16 characters long
+TMPDIR="$PWD/tmp"
+TMPFILE=$(mktemp -u XXXXXXXXXXXXXXXX)
+FILENAME="$TMPDIR/$TMPFILE.json"
+echo "$FILENAME"
+
+generate_captions() {
+  # Generate captions
+  ollama run llama3.1 "$CAPTION_PROMPT" --format json >>"$FILENAME"
+
+  # Parse the JSON output
+  # The format will be:
+  # [{title: string, caption: string, hashtags: string[]}]
+
+  COUNT=$(jq -c '.[] | length' "$FILENAME") # $COUNT is a string should be an integerecho "$COUNT"
+  echo "$COUNT"
+
+  if ! [[ "$COUNT" =~ ^[0-9]+$ ]]; then
+    echo "Error: Unable to parse JSON output count"
+    exit 1
+  fi
+
+  echo "Generated $COUNT items"
+
+  if [ "$COUNT" -ne 42 ]; then
+    echo "Expected 42 items, got $COUNT"
+
+    if [ "$COUNT" -lt 42 ]; then
+      echo "Renaming $FILENAME to $TMPDIR/incomplete-$(basename "$FILENAME")"
+      mv "$FILENAME" "$TMPDIR/incomplete-$(basename "$FILENAME")"
+
+      echo "Trying again…"
+      generate_captions
+    fi
+  fi
+
+  echo "now run flux.sh $FILENAME"
+}
+
+generate_captions
